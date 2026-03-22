@@ -1,41 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/settings">
 
     <PreferenceCategory app:title="@string/monitor_service_pref">
-
         <SwitchPreferenceCompat
             app:defaultValue="true"
             app:key="enableservice"
             app:singleLineTitle="false"
             app:summary="@string/monitor_service_summary"
             app:title="@string/monitor_service_title" />
-
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/drain_monitor_service_pref">
-
         <SwitchPreferenceCompat
             app:defaultValue="false"
             app:key="drainmonitor"
             app:singleLineTitle="false"
             app:summary="@string/drain_monitor_service_summary"
             app:title="@string/drain_monitor_service_title" />
-
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/cooldown_method_pref">
-    <SwitchPreferenceCompat
-        android:dependency="enableservice"
-        app:defaultValue="false"
-        app:key="pauseMode"
-        app:singleLineTitle="false"
-        app:summary="@string/bypass_charging_summary"
-        app:title="@string/bypass_charging_title" />
+        <SwitchPreferenceCompat
+            android:dependency="enableservice"
+            app:defaultValue="false"
+            app:key="pauseMode"
+            app:singleLineTitle="false"
+            app:summary="@string/bypass_charging_summary"
+            app:title="@string/bypass_charging_title" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/temperature_threshold">
-
         <tk.zwander.seekbarpreference.SeekBarPreferenceNew
             android:defaultValue="36.5"
             android:dependency="enableservice"
@@ -59,7 +55,6 @@
             app:minValueFloat="0.1"
             app:stepSize="0.1"
             app:units="°C" />
-
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/battery_level_threshold_pref">
@@ -70,13 +65,14 @@
             app:summary="@string/battery_level_threshold_summary"
             app:title="@string/battery_level_threshold_title" />
 
-        <SeekBarPreference
+        <tk.zwander.seekbarpreference.SeekBarPreferenceNew
             android:defaultValue="60"
             android:dependency="lvlThresholdSwitch"
             android:key="lvlThreshold"
-            app:maxValue="95"
-            app:minValue="30"
-            app:showSeekBarValue="true" />
+            app:maxValueFloat="95"
+            app:minValueFloat="30"
+            app:stepSize="5"
+            app:units="%" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/timer_cooldown_pref">
@@ -99,6 +95,7 @@
             app:stepSize="10"
             app:units="s" />
     </PreferenceCategory>
+
     <PreferenceCategory app:title="@string/scheduled_charge_control_pref">
         <SwitchPreferenceCompat
             android:dependency="enableservice"
@@ -147,12 +144,13 @@
             android:title="@string/pass_through_level_title"
             app:defaultValue="false" />
 
-        <SeekBarPreference
+        <tk.zwander.seekbarpreference.SeekBarPreferenceNew
             android:defaultValue="75"
             android:dependency="idleSwitch"
             android:key="idleLevel"
-            app:maxValue="95"
-            app:minValue="30"
-            app:showSeekBarValue="true" />
+            app:maxValueFloat="95"
+            app:minValueFloat="30"
+            app:stepSize="5"
+            app:units="%" />
     </PreferenceCategory>
 </PreferenceScreen>
