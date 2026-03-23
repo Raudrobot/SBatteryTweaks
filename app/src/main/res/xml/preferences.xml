@@ -33,7 +33,7 @@
 
     <PreferenceCategory app:title="@string/temperature_threshold">
         <tk.zwander.seekbarpreference.SeekBarPreferenceNew
-            android:defaultValue="36.5"
+            android:defaultValue="35.0"
             android:dependency="enableservice"
             android:key="thresholdUp"
             android:singleLineTitle="false"
@@ -45,7 +45,7 @@
             app:units="°C" />
 
         <tk.zwander.seekbarpreference.SeekBarPreferenceNew
-            android:defaultValue="0.5"
+            android:defaultValue="1.0"
             android:dependency="enableservice"
             android:key="tempDelta"
             android:singleLineTitle="false"
