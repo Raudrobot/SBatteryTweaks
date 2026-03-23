@@ -72,9 +72,11 @@ public class BatteryWorker {
         cdSeconds = sharedPref.getFloat(SettingsActivity.KEY_PREF_CD_SECONDS, 30F);
         isSchedEnabled = sharedPref.getBoolean(SettingsActivity.PREF_SCHED_ENABLED, false);
         idleEnabled = sharedPref.getBoolean(SettingsActivity.PREF_IDLE_SWITCH, false);
-        idleLevel = sharedPref.getInt(SettingsActivity.PREF_IDLE_LEVEL, 75);
+        // idleLevel = sharedPref.getInt(SettingsActivity.PREF_IDLE_LEVEL, 75);
+        idleLevel = (int) sharedPref.getFloat(SettingsActivity.PREF_IDLE_LEVEL, 75f);
         lvlSwitch = sharedPref.getBoolean(SettingsActivity.PREF_BATT_LVL_SWITCH, false);
-        lvlThreshold = sharedPref.getInt(SettingsActivity.PREF_BATT_LVL_THRESHOLD, 60);
+        // lvlThreshold = sharedPref.getInt(SettingsActivity.PREF_BATT_LVL_THRESHOLD, 60);
+        lvlThreshold = (int) sharedPref.getFloat(SettingsActivity.PREF_BATT_LVL_THRESHOLD, 60f);
         disableSync = sharedPref.getBoolean(SettingsActivity.PREF_DISABLE_SYNC, false);
         autoReset = sharedPref.getBoolean(SettingsActivity.PREF_RESET_STATS, false);
         enableToast = sharedPref.getBoolean(SettingsActivity.PREF_TOAST_NOTIF, false);
