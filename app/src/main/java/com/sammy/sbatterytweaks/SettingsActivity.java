@@ -2,14 +2,15 @@ package com.sammy.sbatterytweaks;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.widget.Switch;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
-import androidx.preference.SwitchPreferenceCompat;
+import androidx.preference.SeslSwitchPreferenceScreen;
+
+import com.google.android.material.appbar.MaterialToolbar;
+import com.sammy.sbatterytweaks.preference.FloatSeekBarPreference;
 
 import java.util.Objects;
 
@@ -28,18 +29,20 @@ public class SettingsActivity extends AppCompatActivity {
             PREF_IDLE_LEVEL = "idleLevel",
             PREF_DISABLE_SYNC = "disablesync",
             PREF_RESET_STATS = "resetstats",
-            PREF_BATT_LVL_SWITCH = "lvlThresholdSwitch",
-            PREF_BATT_LVL_THRESHOLD = "lvlThreshold",
+            PREF_SLOW_CHARGE_THRESHOLD_SWITCH = "slowChargeThresholdSwitch",
+            PREF_SLOW_CHARGE_THRESHOLD = "slowChargeThreshold",
+            PREF_FAST_CHARGE_THRESHOLD_SWITCH = "fastChargeThresholdSwitch",
+            PREF_FAST_CHARGE_THRESHOLD = "fastChargeThreshold",
             PREF_TOAST_NOTIF = "enabletoast";
 
-    private Switch idleToggle;
+    @Override
+    public boolean onSupportNavigateUp() {
+        getOnBackPressedDispatcher().onBackPressed();
+        return true;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S)
-            setTheme(R.style.Theme_ChargeRateAutomator_Settings);
-        else
-            setTheme(R.style.Theme_ChargeRateAutomator);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.settings_activity);
         if (savedInstanceState == null) {
@@ -48,9 +51,11 @@ public class SettingsActivity extends AppCompatActivity {
                     .replace(R.id.settings, new SettingsFragment())
                     .commit();
         }
-        ActionBar actionBar = getSupportActionBar();
-        if (actionBar != null) {
-            actionBar.setDisplayHomeAsUpEnabled(true);
+        MaterialToolbar toolbar = findViewById(R.id.settings_toolbar);
+        setSupportActionBar(toolbar);
+
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
     }
 
@@ -60,22 +65,22 @@ public class SettingsActivity extends AppCompatActivity {
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             setPreferencesFromResource(R.xml.preferences, rootKey);
-            SwitchPreferenceCompat pauseModeSwitch = findPreference("pauseMode");
+            SeslSwitchPreferenceScreen pauseModeSwitch = findPreference("pauseMode");
             assert pauseModeSwitch != null;
             pauseModeSwitch.setEnabled(false);
-            SwitchPreferenceCompat idleSwitch = findPreference(PREF_IDLE_SWITCH);
+            SeslSwitchPreferenceScreen idleSwitch = findPreference(PREF_IDLE_SWITCH);
             assert idleSwitch != null;
             idleSwitch.setEnabled(false);
-            SwitchPreferenceCompat resetSwitch = findPreference(PREF_RESET_STATS);
+            SeslSwitchPreferenceScreen resetSwitch = findPreference(PREF_RESET_STATS);
 
-            SwitchPreferenceCompat drainMonitorSwitch = findPreference(KEY_PREF_DRAIN_MONITOR);
-            if (!drainMonitorSwitch.isEnabled()) {
+            SeslSwitchPreferenceScreen drainMonitorSwitch = findPreference(KEY_PREF_DRAIN_MONITOR);
+            if (drainMonitorSwitch != null &&
+                    !drainMonitorSwitch.isEnabled()) {
                 pauseModeSwitch.setOnPreferenceClickListener(v -> {
                     DrainMonitor.resetStats(getContext());
                     return false;
                 });
             }
-
 
             if (BatteryWorker.bypassSupported || BatteryWorker.pausePdSupported) {
                 pauseModeSwitch.setEnabled(true);
@@ -85,6 +90,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             if (pauseModeSwitch.isEnabled()) {
                 pauseModeSwitch.setOnPreferenceClickListener(v -> {
+                    BatteryService.setBypassMode(BatteryService.BypassMode.AUTO);
                     BatteryWorker.setBypass(getContext(), 0);
                     return false;
                 });
@@ -104,6 +110,46 @@ public class SettingsActivity extends AppCompatActivity {
                     return true;
                 });
             }
+
+            SeslSwitchPreferenceScreen slowChargeThresholdSwitch = findPreference(PREF_SLOW_CHARGE_THRESHOLD_SWITCH);
+            SeslSwitchPreferenceScreen fastChargeThresholdSwitch = findPreference(PREF_FAST_CHARGE_THRESHOLD_SWITCH);
+            FloatSeekBarPreference slowChargeThreshold = findPreference(PREF_SLOW_CHARGE_THRESHOLD);
+            FloatSeekBarPreference fastChargeThreshold = findPreference(PREF_FAST_CHARGE_THRESHOLD);
+
+            if (slowChargeThresholdSwitch != null &&
+                    slowChargeThreshold != null &&
+                    fastChargeThresholdSwitch != null &&
+                    fastChargeThreshold != null) {
+                slowChargeThreshold.setOnPreferenceChangeListener(((preference, newValue) -> {
+                    int slow = (int) newValue;
+                    int fast = (int) fastChargeThreshold.getValue();
+
+                    if (fastChargeThresholdSwitch.isEnabled()) {
+                        if (slow <= fast) {
+                            slow = fast + 1;
+                            slowChargeThreshold.setValue((float) slow, true);
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }));
+
+                fastChargeThreshold.setOnPreferenceChangeListener(((preference, newValue) -> {
+                    int fast = (int) newValue;
+                    int slow = (int) slowChargeThreshold.getValue();
+
+                    if (slowChargeThresholdSwitch.isEnabled()) {
+                        if (fast >= slow) {
+                            fast = slow - 1;
+                            fastChargeThreshold.setValue((float) fast, true);
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }));
+            }
         }
 
         @Override
@@ -118,8 +164,8 @@ public class SettingsActivity extends AppCompatActivity {
                     BatteryWorker.isOngoing = false;
 
                 if (key.equals(PREF_IDLE_LEVEL) || key.equals(PREF_IDLE_SWITCH)) {
-                    if (!BatteryService.manualBypass)
-                        BatteryWorker.setBypass(getContext(), 0);
+                    BatteryService.setBypassMode(BatteryService.BypassMode.AUTO);
+                    BatteryWorker.setBypass(getContext(), 0);
                 }
             };
         }

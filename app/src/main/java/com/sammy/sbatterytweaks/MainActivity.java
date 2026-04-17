@@ -3,8 +3,10 @@ package com.sammy.sbatterytweaks;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
@@ -23,10 +25,11 @@ import android.view.animation.AnimationUtils;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatImageButton;
 import androidx.appcompat.widget.SwitchCompat;
-import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.text.HtmlCompat;
@@ -37,6 +40,7 @@ import com.scwang.wave.MultiWaveHeader;
 
 import java.util.Locale;
 
+import dev.oneuiproject.oneui.widget.RoundedLinearLayout;
 import rikka.shizuku.Shizuku;
 
 public class MainActivity extends AppCompatActivity {
@@ -52,7 +56,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView voltText;
     private TextView battTemperature;
     private TextView fastChgStatus;
-    private TextView bypassText;
     private AppCompatImageButton settingsButton;
     private Animation rotateAnimation;
     private final Runnable runnable = new Runnable() {
@@ -69,6 +72,10 @@ public class MainActivity extends AppCompatActivity {
                 lvlText = "⚡" + battPercent;
 
             levelText.setText(lvlText);
+
+            if (Math.abs(currentNow) > 10000)
+                currentNow = currentNow / 1000;
+
             currentText.setText(String.format(Locale.getDefault(), "%d mA", currentNow));
             voltText.setText(String.format(Locale.getDefault(), "%d mV", BatteryReceiver.mVolt));
             battTemperature.setText(BatteryWorker.battTemp);
@@ -84,6 +91,32 @@ public class MainActivity extends AppCompatActivity {
             handler.postDelayed(this, BatteryService.refreshInterval);
         }
     };
+    private ActivityResultLauncher<Intent> providerInstallUserActionLauncher;
+    private ActivityResultLauncher<Intent> unknownSourcesLauncher;
+    private BroadcastReceiver providerInstallReceiver;
+
+    private int getThemeColor(int attr) {
+        TypedValue value = new TypedValue();
+        getTheme().resolveAttribute(attr, value, true);
+        return value.data;
+    }
+
+    private void applyColors(MultiWaveHeader waveHeader) {
+        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            toolbar.setBackgroundColor(ContextCompat.getColor(this, com.google.android.material.R.color.material_dynamic_primary50));
+            waveHeader.setStartColor(ContextCompat.getColor(this, com.google.android.material.R.color.material_dynamic_primary50));
+            waveHeader.setCloseColor(ContextCompat.getColor(this, com.google.android.material.R.color.material_dynamic_primary70));
+        } else {
+            int primary = getThemeColor(com.google.android.material.R.attr.colorPrimary);
+            int primaryContainer = getThemeColor(com.google.android.material.R.attr.colorPrimaryContainer);
+
+            toolbar.setBackgroundColor(primary);
+            waveHeader.setStartColor(primary);
+            waveHeader.setCloseColor(primaryContainer);
+        }
+    }
 
     public static void updateWaves(int percentage) {
         multiWaveHeader.setProgress(percentage / 100.0f);
@@ -93,6 +126,28 @@ public class MainActivity extends AppCompatActivity {
         String packageName = context.getPackageName();
         Toast.makeText(context, context.getString(R.string.restart_granted), Toast.LENGTH_SHORT).show();
         Utils.runCmd("am force-stop " + packageName);
+    }
+
+    public static void showSetupDialog(Context context) {
+        TextView msg = new TextView(context);
+        Spanned spanned = HtmlCompat.fromHtml(
+                context.getString(R.string.setup_dialog_message),
+                HtmlCompat.FROM_HTML_MODE_LEGACY
+        );
+
+        msg.setText(spanned);
+        msg.setMovementMethod(LinkMovementMethod.getInstance());
+        msg.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        int padding = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 24, context.getResources().getDisplayMetrics()
+        );
+        msg.setPadding(padding, padding, padding, 0);
+
+        new MaterialAlertDialogBuilder(context, com.google.android.material.R.style.Theme_MaterialComponents_Dialog)
+                .setTitle(R.string.setup_dialog_title)
+                .setCancelable(true)
+                .setView(msg)
+                .setPositiveButton(R.string.setup_dialog_dismiss, (dialog, which) -> dialog.dismiss()).show();
     }
 
     private void updateUI(Boolean shouldUpdate) {
@@ -125,15 +180,55 @@ public class MainActivity extends AppCompatActivity {
             setTheme(R.style.Theme_ChargeRateAutomator_v31_NoActionBar);
         else
             setTheme(R.style.Theme_ChargeRateAutomator_NoActionBar);
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        providerInstallUserActionLauncher =
+                registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                });
+
+        unknownSourcesLauncher =
+                registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result ->
+                        BatteryService.onUnknownSourcesResult(
+                                this,
+                                providerInstallUserActionLauncher,
+                                unknownSourcesLauncher
+                        )
+                );
+
+        providerInstallReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (BatteryService.INSTALL_ACTION.equals(intent.getAction())) {
+                    BatteryService.handleInstallStatusIntent(
+                            MainActivity.this,
+                            intent,
+                            providerInstallUserActionLauncher
+                    );
+                }
+            }
+        };
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(
+                    providerInstallReceiver,
+                    new IntentFilter(BatteryService.INSTALL_ACTION),
+                    RECEIVER_NOT_EXPORTED
+            );
+        } else {
+            registerReceiver(
+                    providerInstallReceiver,
+                    new IntentFilter(BatteryService.INSTALL_ACTION)
+            );
+        }
+
         int actualCapacity = Utils.getActualCapacity(this);
-        int fullcapnom = -1;
+        int fullcapnom;
         float battHealth;
 
-        CardView idleCard = findViewById(R.id.idleCardView);
-        CardView capacityCard = findViewById(R.id.capacityView);
+        RoundedLinearLayout idleCard = findViewById(R.id.idleCardView);
+        RoundedLinearLayout capacityCard = findViewById(R.id.capacityView);
         idleCard.setVisibility(View.GONE);
 
         isRunning = true;
@@ -145,7 +240,7 @@ public class MainActivity extends AppCompatActivity {
 
         AppCompatImageButton donateButton = findViewById(R.id.supportBtn);
 
-        bypassText = findViewById(R.id.bypassText);
+        TextView bypassText = findViewById(R.id.bypassText);
         chargingStatus = findViewById(R.id.chargingText);
         levelText = findViewById(R.id.levelText);
         currentText = findViewById(R.id.currentText);
@@ -186,6 +281,7 @@ public class MainActivity extends AppCompatActivity {
         bypassToggle = findViewById(R.id.bypassToggle);
         bypassText.setText(R.string.idle_charging_text);
         multiWaveHeader = findViewById(R.id.waveHeader);
+        applyColors(multiWaveHeader);
         updateWaves(BatteryReceiver.mLevel);
 
         if (BatteryWorker.bypassSupported || BatteryWorker.pausePdSupported) {
@@ -193,7 +289,11 @@ public class MainActivity extends AppCompatActivity {
         }
         bypassToggle.setOnClickListener(v -> {
             boolean checked = bypassToggle.isChecked();
-            BatteryService.manualBypass = checked;
+
+            BatteryService.setBypassMode(
+                    checked ? BatteryService.BypassMode.FORCE_ON : BatteryService.BypassMode.FORCE_OFF
+            );
+
             BatteryWorker.setBypass(getApplicationContext(), checked ? 1 : 0);
             BatteryWorker.fetchUpdates(getApplicationContext());
             BatteryWorker.updateStats(getApplicationContext(), BatteryReceiver.isCharging());
@@ -232,33 +332,12 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                     Uri.parse("package:" + getPackageName())));
 
-        BatteryService.installDatabaseProvider(this);
-    }
-
-    public static void showSetupDialog(Context context) {
-        TextView msg = new TextView(context);
-        Spanned spanned = HtmlCompat.fromHtml(
-                context.getString(R.string.setup_dialog_message),
-                HtmlCompat.FROM_HTML_MODE_LEGACY
+        BatteryService.installDatabaseProvider(
+                this,
+                providerInstallUserActionLauncher,
+                unknownSourcesLauncher
         );
-
-        msg.setText(spanned);
-        msg.setMovementMethod(LinkMovementMethod.getInstance());
-        msg.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
-        int padding = (int) TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 24, context.getResources().getDisplayMetrics()
-        );
-        msg.setPadding(padding, padding, padding, 0);
-
-        new MaterialAlertDialogBuilder(context)
-                .setTitle(R.string.setup_dialog_title)
-                .setCancelable(true)
-                .setView(msg)
-                .setPositiveButton(R.string.setup_dialog_dismiss, (dialog, which) -> {
-                    dialog.dismiss();
-                }).show();
     }
-
 
     @Override
     protected void onResume() {
@@ -302,6 +381,13 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (providerInstallReceiver != null) {
+            try {
+                unregisterReceiver(providerInstallReceiver);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+
         super.onDestroy();
         isRunning = false;
         if (!BatteryReceiver.isCharging() && !BatteryReceiver.drainMonitorEnabled)

@@ -28,12 +28,12 @@ public class BatteryWorker {
     static SimpleDateFormat sdf;
     static Date currTime, start;
     private static boolean serviceEnabled, timerEnabled, shouldCoolDown,
-            lvlSwitch, enableToast, isSchedEnabled;
+            slowThresholdSwitch, fastThresholdSwitch, enableToast, isSchedEnabled;
     private static float cdSeconds;
     private static int fastChargeEnabled;
     private static int startHour;
     private static int startMinute;
-    private static int lvlThreshold;
+    private static int slowThreshold, fastThreshold;
     private static int duration;
     private static long cooldown;
 
@@ -56,7 +56,10 @@ public class BatteryWorker {
                     fastChargeStatus = context.getString(R.string.disabled);
                     fastChargeEnabled = 0;
                 }
-            } else fastChargeStatus = context.getString(R.string.not_supported);
+            } else {
+                fastChargeStatus = context.getString(R.string.not_supported);
+                fastChargeEnabled = -1;
+            }
         }
 
         if (pausePdSupported)
@@ -72,11 +75,11 @@ public class BatteryWorker {
         cdSeconds = sharedPref.getFloat(SettingsActivity.KEY_PREF_CD_SECONDS, 30F);
         isSchedEnabled = sharedPref.getBoolean(SettingsActivity.PREF_SCHED_ENABLED, false);
         idleEnabled = sharedPref.getBoolean(SettingsActivity.PREF_IDLE_SWITCH, false);
-        // idleLevel = sharedPref.getInt(SettingsActivity.PREF_IDLE_LEVEL, 75);
-        idleLevel = (int) sharedPref.getFloat(SettingsActivity.PREF_IDLE_LEVEL, 75f);
-        lvlSwitch = sharedPref.getBoolean(SettingsActivity.PREF_BATT_LVL_SWITCH, false);
-        // lvlThreshold = sharedPref.getInt(SettingsActivity.PREF_BATT_LVL_THRESHOLD, 60);
-        lvlThreshold = (int) sharedPref.getFloat(SettingsActivity.PREF_BATT_LVL_THRESHOLD, 60f);
+        idleLevel = sharedPref.getInt(SettingsActivity.PREF_IDLE_LEVEL, 75);
+        slowThresholdSwitch = sharedPref.getBoolean(SettingsActivity.PREF_SLOW_CHARGE_THRESHOLD_SWITCH, false);
+        slowThreshold = sharedPref.getInt(SettingsActivity.PREF_SLOW_CHARGE_THRESHOLD, 60);
+        fastThresholdSwitch = sharedPref.getBoolean(SettingsActivity.PREF_FAST_CHARGE_THRESHOLD_SWITCH, false);
+        fastThreshold = sharedPref.getInt(SettingsActivity.PREF_FAST_CHARGE_THRESHOLD, 40);
         disableSync = sharedPref.getBoolean(SettingsActivity.PREF_DISABLE_SYNC, false);
         autoReset = sharedPref.getBoolean(SettingsActivity.PREF_RESET_STATS, false);
         enableToast = sharedPref.getBoolean(SettingsActivity.PREF_TOAST_NOTIF, false);
@@ -87,7 +90,7 @@ public class BatteryWorker {
         duration = timePref.getInt(TimePicker.PREF_DURATION, 480);
 
         if (bypassSupported)
-            battFullCap = Integer.parseInt(Utils.runCmd("cat " + BatteryService.fullCapFIle));
+            battFullCap = Integer.parseInt(Utils.runCmd("cat " + BatteryService.FULLCAPFILE));
     }
 
     public static void batteryWorker(Context context, Boolean isCharging) {
@@ -107,15 +110,19 @@ public class BatteryWorker {
         } else return 100;
     }
 
+    private static void updateIdlePref(Context context, boolean idle) {
+        SharedPreferences prefs = context.getSharedPreferences("battery_widget", Context.MODE_PRIVATE);
+        prefs.edit()
+                .putBoolean("idle", idle)
+                .commit();
+    }
+
     public static void setBypass(int level) {
-        Utils.runCmd("echo " + level + " > " + BatteryService.fullCapFIle);
+        Utils.runCmd("echo " + level + " > " + BatteryService.FULLCAPFILE);
     }
 
     public static void setBypass(Context context, int bypass) {
         if (pausePdSupported) {
-            if (BatteryReceiver.isUsbCharging)
-                return;
-
             if (bypass == 1) {
                 enableFastCharge(context, 1);
 
@@ -129,6 +136,7 @@ public class BatteryWorker {
             Utils.changeSetting(context, Utils.Namespace.SYSTEM, "pass_through", bypass);
 
             BatteryService.isBypassed = bypass;
+            updateIdlePref(context, bypass == 1);
             return;
         }
 
@@ -189,7 +197,7 @@ public class BatteryWorker {
                 throw new Settings.SettingNotFoundException("Not found");
 
             if (Utils.changeSetting(context, Utils.Namespace.SYSTEM, fastChargeSetting, enabled) < 0) {
-                fastChargeStatus = fastChargeStatus + " (" + context.getString(R.string.toggle_failed) + ")";
+                fastChargeStatus = context.getString(R.string.toggle_failed);
             }
         } catch (Settings.SettingNotFoundException ignored) {
             if (Utils.isPrivileged() && Utils.runCmd("ls " + afcDisableFile).contains(afcDisableFile)) {
@@ -199,12 +207,13 @@ public class BatteryWorker {
     }
 
     private static boolean shouldStopFastCharge() {
-        return (lvlSwitch && BatteryReceiver.mLevel >= lvlThreshold) ||
+        return (slowThresholdSwitch && BatteryReceiver.mLevel >= slowThreshold) ||
                 (isSchedEnabled && isLazyTime());
     }
 
     private static boolean shouldStartFastCharge() {
-        return BatteryReceiver.mTemp <= (thresholdTemp - tempDelta) ||
+        return (fastThresholdSwitch && BatteryReceiver.mLevel <= fastThreshold) ||
+                BatteryReceiver.mTemp <= (thresholdTemp - tempDelta) ||
                 (isOngoing && !shouldCoolDown);
     }
 

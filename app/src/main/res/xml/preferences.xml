@@ -4,106 +4,133 @@
     android:id="@+id/settings">
 
     <PreferenceCategory app:title="@string/monitor_service_pref">
-        <SwitchPreferenceCompat
-            app:defaultValue="true"
-            app:key="enableservice"
-            app:singleLineTitle="false"
-            app:summary="@string/monitor_service_summary"
-            app:title="@string/monitor_service_title" />
+        <SeslSwitchPreferenceScreen
+            android:defaultValue="true"
+            android:key="enableservice"
+            android:singleLineTitle="false"
+            android:summary="@string/monitor_service_summary"
+            android:title="@string/monitor_service_title" />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/drain_monitor_service_pref">
-        <SwitchPreferenceCompat
-            app:defaultValue="false"
-            app:key="drainmonitor"
-            app:singleLineTitle="false"
-            app:summary="@string/drain_monitor_service_summary"
-            app:title="@string/drain_monitor_service_title" />
+
+        <SeslSwitchPreferenceScreen
+            android:defaultValue="false"
+            android:key="drainmonitor"
+            android:singleLineTitle="false"
+            android:summary="@string/drain_monitor_service_summary"
+            android:title="@string/drain_monitor_service_title" />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/cooldown_method_pref">
-        <SwitchPreferenceCompat
-            android:dependency="enableservice"
-            app:defaultValue="false"
-            app:key="pauseMode"
-            app:singleLineTitle="false"
-            app:summary="@string/bypass_charging_summary"
-            app:title="@string/bypass_charging_title" />
+    <SeslSwitchPreferenceScreen
+        android:dependency="enableservice"
+        android:defaultValue="false"
+        android:key="pauseMode"
+        android:singleLineTitle="false"
+        android:summary="@string/bypass_charging_summary"
+        android:title="@string/bypass_charging_title" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/temperature_threshold">
-        <tk.zwander.seekbarpreference.SeekBarPreferenceNew
-            android:defaultValue="35.0"
+        <com.sammy.sbatterytweaks.preference.FloatSeekBarPreference
             android:dependency="enableservice"
             android:key="thresholdUp"
             android:singleLineTitle="false"
             android:summary="@string/threshold_temperature_summary"
             android:title="@string/threshold_temperature_title"
-            app:maxValueFloat="45.0"
-            app:minValueFloat="30.0"
+            android:defaultValue="36.5"
+            app:maxValue="45.0"
+            app:minValue="30.0"
             app:stepSize="0.1"
-            app:units="°C" />
+            app:decimals="1"
+            app:unit="°C" />
 
-        <tk.zwander.seekbarpreference.SeekBarPreferenceNew
-            android:defaultValue="1.0"
+        <com.sammy.sbatterytweaks.preference.FloatSeekBarPreference
             android:dependency="enableservice"
             android:key="tempDelta"
             android:singleLineTitle="false"
             android:summary="@string/cooldown_temperature_summary"
             android:title="@string/cooldown_temperature_title"
-            app:maxValueFloat="5.0"
-            app:minValueFloat="0.1"
+            android:defaultValue="0.5"
+            app:maxValue="5.0"
+            app:minValue="0.1"
             app:stepSize="0.1"
-            app:units="°C" />
+            app:decimals="1"
+            app:unit="°C" />
+
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="@string/battery_level_threshold_pref">
-        <SwitchPreferenceCompat
-            app:defaultValue="false"
-            app:key="lvlThresholdSwitch"
-            app:singleLineTitle="false"
-            app:summary="@string/battery_level_threshold_summary"
-            app:title="@string/battery_level_threshold_title" />
+    <PreferenceCategory app:title="@string/slow_charge_threshold_pref">
+        <SeslSwitchPreferenceScreen
+            android:defaultValue="false"
+            android:key="slowChargeThresholdSwitch"
+            android:singleLineTitle="false"
+            android:summary="@string/slow_charge_threshold_summary"
+            android:title="@string/slow_charge_threshold_title" />
 
-        <tk.zwander.seekbarpreference.SeekBarPreferenceNew
+        <com.sammy.sbatterytweaks.preference.FloatSeekBarPreference
             android:defaultValue="60"
-            android:dependency="lvlThresholdSwitch"
-            android:key="lvlThreshold"
-            app:maxValueFloat="95"
-            app:minValueFloat="30"
-            app:stepSize="5"
-            app:units="%" />
+            android:dependency="slowChargeThresholdSwitch"
+            android:key="slowChargeThreshold"
+            app:maxValue="100"
+            app:minValue="30"
+            app:stepSize="1"
+            app:decimals="0"
+            app:unit="%" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/fast_charge_threshold_pref">
+        <SeslSwitchPreferenceScreen
+            android:defaultValue="false"
+            android:key="fastChargeThresholdSwitch"
+            android:singleLineTitle="false"
+            android:summary="@string/fast_charge_threshold_summary"
+            android:title="@string/fast_charge_threshold_title" />
+
+        <com.sammy.sbatterytweaks.preference.FloatSeekBarPreference
+            android:defaultValue="40"
+            android:dependency="fastChargeThresholdSwitch"
+            android:key="fastChargeThreshold"
+            app:maxValue="70"
+            app:minValue="5"
+            app:stepSize="1"
+            app:decimals="0"
+            app:unit="%" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/timer_cooldown_pref">
-        <SwitchPreferenceCompat
+        <SeslSwitchPreferenceScreen
             android:dependency="enableservice"
-            app:defaultValue="false"
-            app:key="timerSwitch"
-            app:singleLineTitle="false"
-            app:title="@string/enable_cooldown_timer" />
+            android:defaultValue="false"
+            android:key="timerSwitch"
+            android:singleLineTitle="false"
+            android:title="@string/enable_cooldown_timer" />
 
-        <tk.zwander.seekbarpreference.SeekBarPreferenceNew
-            android:defaultValue="30"
+        <com.sammy.sbatterytweaks.preference.FloatSeekBarPreference
             android:dependency="timerSwitch"
             android:key="cdSeconds"
             android:singleLineTitle="false"
             android:summary="@string/cooldown_time_summary"
             android:title="@string/cooldown_time_title"
-            app:maxValueFloat="600"
-            app:minValueFloat="30"
+            android:defaultValue="30"
+            app:maxValue="600"
+            app:minValue="30"
             app:stepSize="10"
-            app:units="s" />
+            app:decimals="1"
+            app:unit="s" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/scheduled_charge_control_pref">
-        <SwitchPreferenceCompat
+        <SeslSwitchPreferenceScreen
             android:dependency="enableservice"
-            app:defaultValue="false"
-            app:key="schedSwitch"
-            app:singleLineTitle="false"
-            app:summary="@string/scheduled_charge_control_summary"
-            app:title="@string/scheduled_charge_control_title" />
+            android:defaultValue="false"
+            android:key="schedSwitch"
+            android:singleLineTitle="false"
+            android:summary="@string/scheduled_charge_control_summary"
+            android:title="@string/scheduled_charge_control_title" />
 
         <Preference
             android:dependency="schedSwitch"
@@ -113,44 +140,45 @@
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/misc_pref">
-        <SwitchPreferenceCompat
+        <SeslSwitchPreferenceScreen
             android:dependency="enableservice"
             android:summary="@string/toast_notifications_summary"
-            app:defaultValue="false"
-            app:key="enabletoast"
-            app:singleLineTitle="false"
-            app:title="@string/toast_notifications_title" />
+            android:defaultValue="false"
+            android:key="enabletoast"
+            android:singleLineTitle="false"
+            android:title="@string/toast_notifications_title" />
 
-        <SwitchPreferenceCompat
+        <SeslSwitchPreferenceScreen
             android:dependency="enableservice"
             android:summary="@string/autosync_summary"
-            app:defaultValue="false"
-            app:key="disablesync"
-            app:singleLineTitle="false"
-            app:title="@string/autosync_title" />
+            android:defaultValue="false"
+            android:key="disablesync"
+            android:singleLineTitle="false"
+            android:title="@string/autosync_title" />
 
-        <SwitchPreferenceCompat
+        <SeslSwitchPreferenceScreen
             android:dependency="enableservice"
             android:summary="@string/reset_stats_summary"
-            app:defaultValue="false"
-            app:key="resetstats"
-            app:singleLineTitle="false"
-            app:title="@string/reset_stats_title" />
+            android:key="resetstats"
+            android:defaultValue="false"
+            android:singleLineTitle="false"
+            android:title="@string/reset_stats_title" />
 
-        <SwitchPreferenceCompat
+        <SeslSwitchPreferenceScreen
             android:key="idleSwitch"
             android:singleLineTitle="false"
             android:summary="@string/pass_through_level_summary"
             android:title="@string/pass_through_level_title"
-            app:defaultValue="false" />
+            android:defaultValue="false" />
 
-        <tk.zwander.seekbarpreference.SeekBarPreferenceNew
+        <com.sammy.sbatterytweaks.preference.FloatSeekBarPreference
             android:defaultValue="75"
             android:dependency="idleSwitch"
             android:key="idleLevel"
-            app:maxValueFloat="95"
-            app:minValueFloat="30"
-            app:stepSize="5"
-            app:units="%" />
+            app:maxValue="95"
+            app:minValue="30"
+            app:stepSize="1"
+            app:decimals="0"
+            app:unit="%" />
     </PreferenceCategory>
 </PreferenceScreen>

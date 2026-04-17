@@ -12,16 +12,15 @@ import androidx.preference.PreferenceManager;
 import com.topjohnwu.superuser.ShellUtils;
 
 import java.io.File;
+import java.util.Objects;
 
 public class BatteryReceiver extends BroadcastReceiver {
     public static int mLevel, mVolt, divisor = -1;
     public static float mTemp;
-    private static int mPlugged, mStatus;
-    private final File statsFile = new File("/data/system/batterystats.bin");
-
-    private String activeDrain = "", idleDrain = "";
     public static boolean drainMonitorEnabled = false;
     public static boolean isUsbCharging, isWirelessCharging;
+    private static int mPlugged, mStatus;
+    private final File statsFile = new File("/data/system/batterystats.bin");
 
     public static boolean isCharging() {
         return mPlugged > 0;
@@ -88,6 +87,10 @@ public class BatteryReceiver extends BroadcastReceiver {
         return lastDivisor;
     }
 
+    public static float getTemp() {
+        return mTemp;
+    }
+
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null) {
@@ -102,6 +105,10 @@ public class BatteryReceiver extends BroadcastReceiver {
         isUsbCharging = mPlugged == BatteryManager.BATTERY_PLUGGED_USB;
         isWirelessCharging = mPlugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
 
+        updateStatusPref(context, mLevel, isCharging(), BatteryService.isBypassed());
+
+        BatteryStatusWidgetProvider.Companion.updateAllWidgets(context);
+
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         drainMonitorEnabled = sharedPreferences.getBoolean(SettingsActivity.KEY_PREF_DRAIN_MONITOR, false);
 
@@ -111,24 +118,34 @@ public class BatteryReceiver extends BroadcastReceiver {
         if (divisor <= 0)
             divisor = getStableDivisor(context);
 
-
-        if (intent.getAction().equals(Intent.ACTION_POWER_CONNECTED)) {
-            if (BatteryWorker.disableSync && !ContentResolver.getMasterSyncAutomatically())
+        if (Objects.equals(intent.getAction(), Intent.ACTION_POWER_CONNECTED)) {
+            if (BatteryWorker.disableSync && !ContentResolver.getMasterSyncAutomatically()) {
                 ContentResolver.setMasterSyncAutomatically(true);
+            }
 
             BatteryService.startBackgroundTask(context);
-        } else if (intent.getAction().equals(Intent.ACTION_POWER_DISCONNECTED)) {
-            if (BatteryWorker.disableSync && ContentResolver.getMasterSyncAutomatically())
+
+            if (drainMonitorEnabled) {
+                DrainMonitor.resetStats(context);
+            }
+        } else if (Objects.equals(intent.getAction(), Intent.ACTION_POWER_DISCONNECTED)) {
+            if (drainMonitorEnabled) {
+                DrainMonitor.resetStats(context);
+            }
+
+            if (BatteryWorker.disableSync && ContentResolver.getMasterSyncAutomatically()) {
                 ContentResolver.setMasterSyncAutomatically(false);
+            }
 
             if (BatteryWorker.autoReset) {
-                if (statsFile.exists())
+                if (statsFile.exists()) {
                     ShellUtils.fastCmd("rm " + statsFile);
+                }
             }
 
             if (BatteryService.isBypassed == 1) {
                 BatteryWorker.setBypass(context, 0);
-                BatteryService.manualBypass = false;
+                BatteryService.setBypassMode(BatteryService.BypassMode.AUTO);
             }
 
             if (!MainActivity.isRunning && !drainMonitorEnabled) {
@@ -140,22 +157,15 @@ public class BatteryReceiver extends BroadcastReceiver {
             MainActivity.updateWaves(mLevel);
         }
 
-        if (isCharging() || !drainMonitorEnabled) {
-            activeDrain = "";
-            idleDrain = "";
-        } else {
-            if (DrainMonitor.getScreenOnDrainRate() > 0.0f)
-                activeDrain = context.getString(R.string.active_drain, DrainMonitor.getScreenOnDrainRate());
-
-            if (DrainMonitor.getScreenOffDrainRate() > 0.0f)
-                idleDrain = context.getString(R.string.idle_drain, DrainMonitor.getScreenOffDrainRate());
-        }
-
-        BatteryService.updateNotif(context.getString(R.string.temperature_title) + getTemp() + " °C",
-                activeDrain, idleDrain);
+        BatteryService.updateNotif(context);
     }
 
-    private float getTemp() {
-        return mTemp;
+    private void updateStatusPref(Context context, int level, Boolean charging, Boolean idle) {
+        SharedPreferences prefs = context.getSharedPreferences("battery_widget", Context.MODE_PRIVATE);
+        prefs.edit()
+                .putInt("battery_level", level)
+                .putBoolean("charging", charging)
+                .putBoolean("idle", idle)
+                .commit();
     }
 }

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/widget_bg_outer_radius" />
+        </shape>
+    </item>
+
+    <item
+        android:left="@dimen/widget_bg_inset"
+        android:top="@dimen/widget_bg_inset"
+        android:right="@dimen/widget_bg_inset"
+        android:bottom="@dimen/widget_bg_inset">
+
+        <layer-list>
+            <item android:drawable="@drawable/widget_bg_inner" />
+            <item android:drawable="@drawable/widget_inner_glow_discharging" />
+        </layer-list>
+    </item>
+
+</layer-list>

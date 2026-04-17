@@ -15,6 +15,7 @@
     <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="com.netvor.settings.tables.provider.permission.SETTINGS_TABLES_PROVIDER" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <queries>
         <provider android:authorities="com.netvor.provider.SettingsDatabaseProvider" />
     </queries>
@@ -59,6 +60,19 @@
                 <action android:name="android.intent.action.ACTION_POWER_CONNECTED"/>
                 <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED"/>
             </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".BatteryStatusWidgetProvider"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/sbt_widget_info" />
         </receiver>
 
         <service android:name=".BatteryService" android:foregroundServiceType="specialUse">
